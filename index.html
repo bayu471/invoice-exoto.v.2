@@ -193,6 +193,8 @@
     <button onclick="clearTTD()">Hapus TTD</button>
 
     <p class="total">Total: <span id="total">Rp 0</span></p>
+    <button onclick="simpanKeSheet()" style="background-color: #007bff; color: white; padding: 10px; border: none; border-radius: 5px; font-weight: bold;">Simpan ke Database</button>
+
     <button onclick="cetakPDF()">Cetak PDF</button>
     
   </div>
@@ -528,6 +530,33 @@ canvas.addEventListener('touchend', () => drawing = false);
 canvas.addEventListener('touchcancel', () => drawing = false);
 
 window.onload = muatItemFavorit;
+
+//script untuk google script
+async function simpanKeSheet() {
+  const data = {
+    nama: document.getElementById('nama').value,
+    model: document.getElementById('model').value,
+    km: document.getElementById('km').value,
+    tanggal: document.getElementById('tanggal').value,
+    items: items.map(i => `${i.item} x${i.jumlah} @${formatRupiah(i.harga)}`),
+    repairs: repairs.map(r => `${r.repair} (${formatRupiah(r.harga)})`),
+    notes: notes,
+    total: document.getElementById('total').textContent
+  };
+
+  await fetch("https://script.google.com/macros/s/AKfycbybAf09MT4P3VVyUHfzVa5kNY9DHwlbafu_3KWTx2iaK2F0RlDoU_c_MzerxF9BEDNDXg/exec", {
+    method: "POST",
+    body: JSON.stringify(data),
+    headers: {
+      "Content-Type": "application/json"
+    }
+  })
+  .then(res => res.text())
+  .then(res => alert("Berhasil simpan: " + res))
+  .catch(err => alert("Gagal simpan: " + err));
+}
+
+
 
   </script>
 </body>
