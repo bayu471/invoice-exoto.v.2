@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Invoice ExOto</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0; padding: 0;
+      background: #f0f2f5;
+      font-size: 16px;
+      padding: 0 30px;
+    }
+    .container {
+      max-width: 420px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 20px;
+    }
+    .logo-wrapper {
+      display: flex;
+      justify-content: center;
+    }
+    img.logo {
+      width: 280px;
+    }
+    input, button, textarea {
+      width: 100%;
+      padding: 12px;
+      margin: 6px 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+    }
+    button {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      font-weight: bold;
+    }
+    button:hover {
+      background-color: #218838;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 14px;
+    }
+    table th, table td {
+      text-align: left;
+      padding: 6px;
+      border-bottom: 1px dashed #ccc;
+    }
+    .right {
+      text-align: right;
+    }
+    canvas {
+      width: 100%;
+      height: auto;
+      border: 1px solid #ccc;
+      touch-action: none;
+    }
+    .total {
+      font-weight: bold;
+      font-size: 16px;
+      text-align: right;
+      margin-top: 10px;
+    }
+    @media print {
+      body * {
+        display: none !important;
+      }
+    }
+
+    /* untuk deopdown dan hapus*/
+    .favorit-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.favorit-wrapper select {
+  flex: 1;
+  padding: 10px 12px;
+  font-size: 15px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: #fff;
+  transition: all 0.2s ease;
+}
+
+.favorit-wrapper select:hover {
+  background-color: #f8f9fa;
+}
+
+.hapus-btn {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 16px;
+  cursor: pointer;
+  height: 40px; /* sama tinggi dengan select */
+  width: 40px;  /* bikin ramping */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.hapus-btn:hover {
+  background-color: #c82333;
+}
+
+  </style>
+</head>
+<body>
+  <div class="container" id="invoice">
+    <div class="logo-wrapper">
+      <!-- kalau merubah src gambar maka di printArea.innerHTML harus diganti juga -->
+      <img src="EX-OTO1.png" alt="Logo ExOto" class="logo">
+    </div>
+    <h2>APLIKASI INVOICE</h2>
+
+    <p><strong>Nama:</strong> <input type="text" id="nama"></p>
+    <p><strong>Jenis/Model:</strong> <input type="text" id="model"></p>
+    <p><strong>Kilometer:</strong> <input type="text" id="km" oninput="formatKM(this)"></p>
+    <p><strong>Tanggal:</strong> <input type="date" id="tanggal"></p>
+
+                  <h4>Item Service</h4>
+                  <div class="favorit-wrapper">
+                    <select id="itemFavoritSelect" onchange="isiDariFavorit()">
+                      <option value="">-- Pilih dari favorit --</option>
+                    </select>
+                    <button onclick="hapusItemFavorit()" class="hapus-btn">🗑</button>
+                </div>
+
+                  <input type="text" id="item" placeholder="Nama Item">
+                  <input type="number" id="jumlah" placeholder="Jumlah">
+                  <input type="text" id="harga" placeholder="Harga Satuan" oninput="formatInputRupiah(this)">
+                  <button onclick="tambahItem()">Tambah Item</button>
+                  <button onclick="simpanSebagaiFavorit()" style="background:#007bff;margin-top:6px;">Simpan ke Favorit</button>
+
+              <!--ini adalah tabel item -->
+                  <table id="itemTable">
+                    <thead><tr><th>Item</th><th class="right">Total</th><th></th></tr></thead>
+                    <tbody></tbody>
+                  </table>
+              <!--menampilkan seluruh total item -->
+                  <p style="text-align: right; font-weight: bold;">
+                    Total Item: <span id="totalItem">Rp 0</span>
+                  </p>
+
+
+    <h4>Jasa Service</h4>
+    <input type="text" id="repair" placeholder="Jenis Pekerjaan">
+    <input type="text" id="repairHarga" placeholder="Biaya Jasa" oninput="formatInputRupiah(this)">
+    <button onclick="tambahRepair()">Tambah Jasa</button>
+
+    <table id="repairTable">
+      <thead><tr><th>Jasa</th><th class="right">Harga</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <!--menampilkan seluruh total jasa -->
+    <p style="text-align: right; font-weight: bold;">
+      Total Jasa: <span id="totalJasa">Rp 0</span>
+    </p>
+
+
+    <h4>Catatan / Saran</h4>
+    <input type="text" id="note" placeholder="Catatan atau saran...">
+    <button onclick="tambahCatatan()">Tambah Catatan</button>
+
+    <table id="noteTable">
+      <thead><tr><th>Catatan</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <h4>Tanda Tangan:</h4>
+    <canvas id="ttd" width="250" height="80"></canvas><br>
+    <button onclick="clearTTD()">Hapus TTD</button>
+
+    <p class="total">Total: <span id="total">Rp 0</span></p>
+    <button onclick="cetakPDF()">Cetak PDF</button>
+    
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script>
+    let items = [], repairs = [], notes = [];
+
+    function formatRupiah(num) {
+      return 'Rp ' + num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+
+    function parseRupiah(str) {
+      return parseInt(str.replace(/[^\d]/g, '')) || 0;
+    }
+
+    function formatKM(input) {
+      let val = input.value.replace(/[^\d]/g, ''); // Hilangkan semua selain angka
+        if (val === '') {
+          input.value = '';
+          return;
+        }
+        val = val.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        input.value = val + ' km';
+    }
+
+    function formatInputRupiah(input) {
+      let val = input.value.replace(/\D/g, '');
+      input.value = val.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+
+    function tambahItem() {
+      const item = document.getElementById('item').value;
+      const jumlah = parseInt(document.getElementById('jumlah').value);
+      const harga = parseRupiah(document.getElementById('harga').value);
+      if (!item || isNaN(harga) || isNaN(jumlah)) return;
+      items.push({ item, jumlah, harga });
+      document.getElementById('item').value = '';
+      document.getElementById('jumlah').value = '';
+      document.getElementById('harga').value = '';
+      renderItems();
+    }
+
+    function renderItems() {
+      const tbody = document.querySelector("#itemTable tbody");
+      tbody.innerHTML = "";
+      items.forEach((val, idx) => {
+        const total = val.harga * val.jumlah;
+        tbody.innerHTML += `<tr>
+          <td>${val.item} x${val.jumlah} @${formatRupiah(val.harga)}</td>
+          <td class="right">${formatRupiah(total)}</td>
+          <td><button onclick="hapusItem(${idx})">X</button></td>
+        </tr>`;
+      });
+      hitungTotal();
+    }
+
+    function tambahRepair() {
+      const repair = document.getElementById('repair').value;
+      const harga = parseRupiah(document.getElementById('repairHarga').value);
+      if (!repair || isNaN(harga)) return;
+      repairs.push({ repair, harga });
+      document.getElementById('repair').value = '';
+      document.getElementById('repairHarga').value = '';
+      renderRepairs();
+    }
+
+    function renderRepairs() {
+      const tbody = document.querySelector("#repairTable tbody");
+      tbody.innerHTML = "";
+      repairs.forEach((val, idx) => {
+        tbody.innerHTML += `<tr>
+          <td>${val.repair}</td>
+          <td class="right">${formatRupiah(val.harga)}</td>
+          <td><button onclick="hapusRepair(${idx})">X</button></td>
+        </tr>`;
+      });
+      hitungTotal();
+    }
+
+    function tambahCatatan() {
+      const note = document.getElementById('note').value;
+      if (!note) return;
+      notes.push(note);
+      document.getElementById('note').value = '';
+      renderCatatan();
+    }
+
+    function renderCatatan() {
+      const tbody = document.querySelector("#noteTable tbody");
+      tbody.innerHTML = "";
+      notes.forEach((note, idx) => {
+        tbody.innerHTML += `<tr>
+          <td>${note}</td>
+          <td><button onclick="hapusCatatan(${idx})">X</button></td>
+        </tr>`;
+      });
+    }
+
+    function hapusItem(idx) { items.splice(idx, 1); renderItems(); }
+    function hapusRepair(idx) { repairs.splice(idx, 1); renderRepairs(); }
+    function hapusCatatan(idx) { notes.splice(idx, 1); renderCatatan(); }
+
+    function hitungTotal() {
+      const totalItem = items.reduce((sum, i) => sum + i.harga * i.jumlah, 0);
+      const totalRepair = repairs.reduce((sum, r) => sum + r.harga, 0);
+// fungsi total item
+      document.getElementById('totalItem').textContent = formatRupiah(totalItem);
+// fungsi total Jasa
+      document.getElementById('totalJasa').textContent = formatRupiah(totalRepair);
+// fungsi total item + Jasa
+      document.getElementById('total').textContent = formatRupiah(totalItem + totalRepair);
+    }
+
+    function formatTanggalIndonesia(yyyyMMdd) {
+      const [year, month, day] = yyyyMMdd.split("-");
+      return `${day}-${month}-${year}`;
+    }
+
+    async function cetakPDF() {
+      const { jsPDF } = window.jspdf;
+      const nama = document.getElementById('nama').value;
+      const model = document.getElementById('model').value;
+      const km = document.getElementById('km').value;
+      const tanggal = formatTanggalIndonesia(document.getElementById('tanggal').value);
+      const total = document.getElementById('total').textContent;
+      const ttdURL = document.getElementById('ttd').toDataURL();
+
+      const printArea = document.createElement("div");
+      printArea.style.width = "58mm";
+      printArea.style.padding = "5px";
+      printArea.style.fontFamily = "monospace";
+      printArea.style.fontSize = "12px";
+printArea.innerHTML = `
+  <div style="text-align:center; font-size:9px; line-height:1.15; margin:0; padding:0;letter-spacing:0.3px;">
+    <img src="EX-OTO.png" width="200" style="display:block; margin:0 auto 1px;" />
+    <div style="margin:0;">
+      <span style="font-size:12px;">08975676888 (WA Only)</span>
+    </div>
+     <hr style="margin: 2px 0;">
+  </div>
+  <div style="font-size:12px; line-height:1.15; margin:0;letter-spacing:0.3px;">
+    <p style="margin:0;">Nama: ${nama}</p>
+    <p style="margin:0;">Model: ${model}</p>
+    <p style="margin:0;">Kilometer: ${km}</p>
+    <p style="margin:0;">Tanggal: ${tanggal}</p>
+
+    <hr style="margin: 2px 0 1px;">
+
+    <p style="margin:0;"><strong>Item:</strong></p>
+    <table style="width:100%; font-size:12px; border-collapse:collapse;">
+        ${items.map(i => `
+          <tr>
+            <td colspan="2" style="padding: 1px 0 2px 0;">${i.item} x${i.jumlah} @${formatRupiah(i.harga)}</td>
+          </tr>
+          <tr style="border-bottom: 1px dashed #999;">
+            <td></td>
+            <td style="text-align:right; padding: 1px 0 2px 0;">= ${formatRupiah(i.harga * i.jumlah)}</td>
+          </tr>
+        `).join("")}
+    </table>
+    <p style="text-align:right; margin:0;"><strong>${formatRupiah(items.reduce((sum, i) => sum + i.harga * i.jumlah, 0))}</strong></p>
+
+    <hr style="margin: 2px 0;">
+
+    <p style="margin:0;"><strong>Jasa:</strong></p>
+    <table style="width:100%; font-size:12px; border-collapse:collapse;">
+      ${repairs.map(r => `
+        <tr>
+          <td style="padding:1px 0 2px 0;">${r.repair}</td>
+          <td style="text-align:right; padding:1px 0 2px 0;">${formatRupiah(r.harga)}</td>
+        </tr>
+      `).join("")}
+    </table>
+    <p style="text-align:right; margin:0;"><strong>${formatRupiah(repairs.reduce((sum, r) => sum + r.harga, 0))}</strong></p>
+
+    <hr style="margin: 2px 0;">
+
+    <p style="margin:0;"><strong>Catatan:</strong></p>
+    <ul style="margin:0 0 2px 15px; padding:1px 0 2px 0; font-size:12px;">
+      ${notes.map(n => `<li>${n}</li>`).join("")}
+    </ul>
+
+    <hr style="margin: 2px 0;">
+
+    <p style="margin:0;font-size:12px;"><strong>Total:</strong> ${total}</p>
+    <p style="margin:0;"><strong>TTD/STEMPEL:</strong></p>
+    <img src="${ttdURL}" width="70" style="margin:1px 0;" />
+
+    <p style="text-align:center; margin:3px 0 0 0; font-size:8.5px; font-style:italic;">
+      Terima kasih telah mempercayakan perawatan dan perbaikan mobil kesayangan anda kepada EX-OTO SERVICE
+    </p>
+    <p></p>
+    <p style="text-align:center; margin:0; font-size:8px; font-style:italic;">
+      "Banyak kerusakan besar berawal dari hal kecil yang terlambat terdeteksi, dengan melakukan perawatan mobil secara berkala dapat mendeteksi kerusakan sejak dini, umur komponen menjadi lebih panjang serta performa mobil tetap terjaga dan selalu prima"
+    </p>
+  </div>
+`;
+
+
+
+
+      document.body.appendChild(printArea);
+      const canvas = await html2canvas(printArea, { scale: 2 });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: [58, (canvas.height * 58) / canvas.width]
+      });
+      pdf.addImage(imgData, "PNG", 0, 0, 58, (canvas.height * 58) / canvas.width);
+      pdf.save("struk-exoto.pdf");
+      document.body.removeChild(printArea);
+    }
+
+    // Tanda Tangan Aktif
+    const canvas = document.getElementById('ttd');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+    canvas.addEventListener('mousedown', () => {
+      drawing = true;
+      ctx.beginPath();
+    });
+    canvas.addEventListener('mouseup', () => drawing = false);
+    canvas.addEventListener('mousemove', e => {
+      if (!drawing) return;
+      const rect = canvas.getBoundingClientRect();
+      ctx.lineWidth = 1;
+      ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+      ctx.stroke();
+    });
+
+    function clearTTD() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    //tambah favorite
+    let itemFavorit = JSON.parse(localStorage.getItem("itemFavorit")) || [];
+
+function simpanItemFavorit(nama, harga) {
+  itemFavorit.push({ nama, harga });
+  localStorage.setItem("itemFavorit", JSON.stringify(itemFavorit));
+  muatItemFavorit();
+}
+
+function simpanSebagaiFavorit() {
+  const nama = document.getElementById('item').value;
+  const harga = parseRupiah(document.getElementById('harga').value);
+  if (nama && harga) {
+    simpanItemFavorit(nama, harga);
+    alert("Item disimpan ke favorit.");
+  } else {
+    alert("Isi nama item dan harga dulu.");
+  }
+}
+
+function muatItemFavorit() {
+  const select = document.getElementById("itemFavoritSelect");
+  select.innerHTML = '<option value="">-- Pilih dari favorit --</option>';
+  itemFavorit.forEach((item, idx) => {
+    const opt = document.createElement("option");
+    opt.value = idx;
+    opt.textContent = `${item.nama} (${formatRupiah(item.harga)})`;
+    select.appendChild(opt);
+  });
+}
+
+function isiDariFavorit() {
+  const idx = document.getElementById("itemFavoritSelect").value;
+  if (idx !== "") {
+    const item = itemFavorit[idx];
+    document.getElementById("item").value = item.nama;
+    document.getElementById("harga").value = formatRupiah(item.harga);
+  }
+}
+
+function hapusFavoritDipilih() {
+  const select = document.getElementById("itemFavoritSelect");
+  const idx = select.value;
+  if (idx === "") {
+    alert("Pilih item favorit yang ingin dihapus.");
+    return;
+  }
+  if (confirm("Yakin ingin menghapus item favorit ini?")) {
+    itemFavorit.splice(idx, 1);
+    localStorage.setItem("itemFavorit", JSON.stringify(itemFavorit));
+    muatItemFavorit();
+  }
+}
+
+//fungsi hapus item favorite
+function hapusItemFavorit() {
+  const select = document.getElementById("itemFavoritSelect");
+  const idx = select.value;
+  if (idx === "") {
+    alert("Pilih item favorit yang mau dihapus.");
+    return;
+  }
+
+  if (confirm("Yakin ingin menghapus item favorit ini?")) {
+    itemFavorit.splice(idx, 1);
+    localStorage.setItem("itemFavorit", JSON.stringify(itemFavorit));
+    muatItemFavorit();
+    document.getElementById("item").value = '';
+    document.getElementById("harga").value = '';
+    select.value = "";
+  }
+}
+
+//tanda tangan di HP
+// Mobile (touch)
+canvas.addEventListener('touchstart', function (e) {
+  e.preventDefault();
+  drawing = true;
+  const touch = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  ctx.beginPath();
+  ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+}, { passive: false });
+
+canvas.addEventListener('touchmove', function (e) {
+  e.preventDefault();
+  if (!drawing) return;
+  const touch = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+  ctx.stroke();
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => drawing = false);
+canvas.addEventListener('touchcancel', () => drawing = false);
+
+window.onload = muatItemFavorit;
+
+  </script>
+</body>
+</html>
