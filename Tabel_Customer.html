@@ -76,31 +76,30 @@
     @media (min-width: 600px) {
       .top-bar { flex-direction: row; justify-content: space-between; align-items: center; }
     }
-    .pdf-btn { background-color: #dc3545; /* merah */color: white;}
-    .excel-btn { background-color: #28a745; /* merah */color: white;}
-
+    .pdf-btn { background-color: #dc3545; color: white;}
+    .excel-btn { background-color: #28a745; color: white;}
   </style>
+
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-  <!-- library untuk export pdf dan Excel -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-
 </head>
 <body>
   <h2>Data Customer Lengkap</h2>
   <div class="top-bar">
-      <button onclick="window.location.href='index.html'">+ Tambah Data</button>
-      <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Cari nama / model / km / tanggal / item / alamat...">   
+    <button onclick="window.location.href='index.html'">+ Tambah Data</button>
+    <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Cari nama / model / km / tanggal / item / alamat...">   
   </div>
-      <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-        <button class="pdf-btn" onclick="exportPDF()">Export PDF</button>
-        <button class="excel-btn" onclick="exportExcel()">Export Excel</button>
-      </div>
+  <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+    <button class="pdf-btn" onclick="exportPDF()">Export PDF</button>
+    <button class="excel-btn" onclick="exportExcel()">Export Excel</button>
+  </div>
   <table>
     <thead>
       <tr>
+        <th>No</th>
         <th>Nama</th>
         <th>Model</th>
         <th>KM</th>
@@ -116,6 +115,7 @@
     <tbody id="dataBody"></tbody>
   </table>
   <div class="pagination" id="pagination"></div>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDZTV2Ebf9YKOh5tzgiE7jROXdWcdNv8VU",
@@ -124,6 +124,7 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+
     let semuaData = [];
     let editId = null;
     let halamanSaatIni = 1;
@@ -145,8 +146,6 @@
       return `${tgl}-${bln}-${thn}`;
     }
 
-
-
     function renderTable() {
       const tbody = document.getElementById("dataBody");
       const keyword = document.getElementById("searchInput").value.toLowerCase();
@@ -161,20 +160,21 @@
           (row.tanggal || "").toLowerCase().includes(keyword) ||
           (row.items || []).join(", ").toLowerCase().includes(keyword) ||
           (row.repairs || []).join(", ").toLowerCase().includes(keyword) ||
-          (row.alamat || "").toLowerCase().includes(keyword)  // kalau sudah tambahkan kolom alamat
+          (row.alamat || "").toLowerCase().includes(keyword)
         );
       }
-
 
       const totalHalaman = Math.ceil(hasilFilter.length / barisPerHalaman);
       halamanSaatIni = Math.min(halamanSaatIni, totalHalaman);
       const awal = (halamanSaatIni - 1) * barisPerHalaman;
       const dataTampil = hasilFilter.slice(awal, awal + barisPerHalaman);
 
-      dataTampil.forEach(row => {
+      dataTampil.forEach((row, index) => {
         const isEditing = editId === row.id;
+        const nomor = awal + index + 1;
         const tr = document.createElement("tr");
         tr.innerHTML = isEditing ? `
+          <td>${nomor}</td>
           <td><input class="input-kecil" id="edit-nama" value="${row.nama || ''}"></td>
           <td><input class="input-kecil" id="edit-model" value="${row.model || ''}"></td>
           <td><input class="input-kecil" id="edit-km" value="${row.km || ''}"></td>
@@ -189,6 +189,7 @@
             <button onclick="editId=null; renderTable()">Batal</button>
           </td>
         ` : `
+          <td>${nomor}</td>
           <td>${row.nama || ""}</td>
           <td>${row.model || ""}</td>
           <td>${row.km || ""}</td>
@@ -227,14 +228,14 @@
         model: document.getElementById("edit-model").value,
         km: document.getElementById("edit-km").value,
         tanggal: document.getElementById("edit-tanggal").value,
-         alamat: document.getElementById("edit-alamat").value,
+        alamat: document.getElementById("edit-alamat").value,
         total: document.getElementById("edit-total").value,
         items: document.getElementById("edit-items").value.split('\n'),
         repairs: document.getElementById("edit-repairs").value.split('\n'),
         notes: document.getElementById("edit-notes").value.split('\n')
       };
       await db.collection("invoices").doc(id).update(dataBaru);
-      alert("\u2705 Data berhasil diperbarui!");
+      alert("✅ Data berhasil diperbarui!");
       editId = null;
       ambilData();
     }
@@ -242,79 +243,75 @@
     async function hapusData(id) {
       if (confirm("Yakin ingin menghapus data ini?")) {
         await db.collection("invoices").doc(id).delete();
-        alert("\u2705 Data dihapus");
+        alert("✅ Data dihapus");
         ambilData();
       }
     }
 
-    ambilData();
+    function handleSearch() {
+      halamanSaatIni = 1;
+      renderTable();
+    }
 
-    // fungsi untuk export PDF dan EXCEL
-  function getFilteredData() {
-    const keyword = document.getElementById("searchInput").value.toLowerCase();
-    return semuaData.filter(row =>
-      (row.nama || "").toLowerCase().includes(keyword) ||
-      (row.model || "").toLowerCase().includes(keyword) ||
-      (row.km || "").toLowerCase().includes(keyword) ||
-      (row.tanggal || "").toLowerCase().includes(keyword) ||
-      (row.alamat || "").toLowerCase().includes(keyword) ||
-      (row.items || []).join(", ").toLowerCase().includes(keyword) ||
-      (row.repairs || []).join(", ").toLowerCase().includes(keyword)
-    );
-  }
+    function getFilteredData() {
+      const keyword = document.getElementById("searchInput").value.toLowerCase();
+      return semuaData.filter(row =>
+        (row.nama || "").toLowerCase().includes(keyword) ||
+        (row.model || "").toLowerCase().includes(keyword) ||
+        (row.km || "").toLowerCase().includes(keyword) ||
+        (row.tanggal || "").toLowerCase().includes(keyword) ||
+        (row.alamat || "").toLowerCase().includes(keyword) ||
+        (row.items || []).join(", ").toLowerCase().includes(keyword) ||
+        (row.repairs || []).join(", ").toLowerCase().includes(keyword)
+      );
+    }
 
-  function exportPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const data = getFilteredData().map((row, i) => [
+    function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const data = getFilteredData().map((row, i) => [
         i + 1,
         row.nama || '',
         row.model || '',
         row.km || '',
         row.tanggal || '',
-        row.alamat || '', // << tambahkan baris ini
+        row.alamat || '',
         (row.items || []).join(", "),
         (row.repairs || []).join(", "),
         (row.notes || []).join(", "),
         row.total || ''
       ]);
 
-    doc.autoTable({
-      head: [['No', 'Nama', 'Model', 'KM', 'Tanggal', 'Alamat', 'Item', 'Jasa', 'Catatan', 'Total']],
-      body: data,
-      styles: { fontSize: 8 }
-    });
+      doc.autoTable({
+        head: [['No', 'Nama', 'Model', 'KM', 'Tanggal', 'Alamat', 'Item', 'Jasa', 'Catatan', 'Total']],
+        body: data,
+        styles: { fontSize: 8 }
+      });
 
-    doc.save('data_customer.pdf');
-  }
+      doc.save('data_customer.pdf');
+    }
 
-  function exportExcel() {
-    const data = getFilteredData().map((row, i) => ({
-      No: i + 1,
-      Nama: row.nama || '',
-      Model: row.model || '',
-      KM: row.km || '',
-      Tanggal: row.tanggal || '',
-      Alamat: row.alamat || '', // << tambahkan baris ini
-      Item: (row.items || []).join(", "),
-      Jasa: (row.repairs || []).join(", "),
-      Catatan: (row.notes || []).join(", "),
-      Total: row.total || ''
-    }));
+    function exportExcel() {
+      const data = getFilteredData().map((row, i) => ({
+        No: i + 1,
+        Nama: row.nama || '',
+        Model: row.model || '',
+        KM: row.km || '',
+        Tanggal: row.tanggal || '',
+        Alamat: row.alamat || '',
+        Item: (row.items || []).join(", "),
+        Jasa: (row.repairs || []).join(", "),
+        Catatan: (row.notes || []).join(", "),
+        Total: row.total || ''
+      }));
 
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "DataCustomer");
+      XLSX.writeFile(wb, "data_customer.xlsx");
+    }
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "DataCustomer");
-    XLSX.writeFile(wb, "data_customer.xlsx");
-  }
-
-    function handleSearch() {
-  const keyword = document.getElementById("searchInput").value.trim().toLowerCase();
-  halamanSaatIni = 1; // reset ke halaman awal
-  renderTable(); // tetap renderTable, tidak usah ambilData
-}
-
+    ambilData();
   </script>
 </body>
 </html>
