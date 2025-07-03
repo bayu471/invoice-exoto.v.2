@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Data Customer Lengkap</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { font-family: Arial, sans-serif; padding: 10px; background: #f8f9fa; }
+    h2 { text-align: center; font-size: 18px; }
+    .top-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .top-bar button {
+      padding: 8px;
+      font-size: 14px;
+      border: none;
+      background-color: #007bff;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    input[type="text"] {
+      padding: 8px;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      table-layout: auto;
+    }
+    th, td {
+      padding: 6px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+      font-size: 12px;
+      vertical-align: top;
+    }
+    tr:hover { background-color: #f1f1f1; }
+    button {
+      padding: 4px 6px;
+      font-size: 12px;
+      margin: 2px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .hapus-btn { background-color: #dc3545; color: white; }
+    .edit-btn { background-color: #ffc107; color: black; }
+    .simpan-btn { background-color: #28a745; color: white; }
+    .input-kecil {
+      width: 100%;
+      font-size: 12px;
+      padding: 4px;
+      box-sizing: border-box;
+    }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      font-family: inherit;
+    }
+    .pagination {
+      text-align: center;
+      margin-top: 10px;
+    }
+    .pagination button {
+      margin: 0 3px;
+      padding: 4px 8px;
+    }
+    @media (min-width: 600px) {
+      .top-bar { flex-direction: row; justify-content: space-between; align-items: center; }
+    }
+    .pdf-btn { background-color: #dc3545; /* merah */color: white;}
+    .excel-btn { background-color: #28a745; /* merah */color: white;}
+
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <!-- library untuk export pdf dan Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+</head>
+<body>
+  <h2>Data Customer Lengkap</h2>
+  <div class="top-bar">
+      <button onclick="window.location.href='index.html'">+ Tambah Data</button>
+      <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Cari nama / model / km / tanggal / item / alamat...">   
+  </div>
+      <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+        <button class="pdf-btn" onclick="exportPDF()">Export PDF</button>
+        <button class="excel-btn" onclick="exportExcel()">Export Excel</button>
+      </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Nama</th>
+        <th>Model</th>
+        <th>KM</th>
+        <th>Tanggal</th>
+        <th>Alamat</th>
+        <th>Item</th>
+        <th>Jasa</th>
+        <th>Catatan</th>
+        <th>Total</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody id="dataBody"></tbody>
+  </table>
+  <div class="pagination" id="pagination"></div>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDZTV2Ebf9YKOh5tzgiE7jROXdWcdNv8VU",
+      authDomain: "exoto-invoice.firebaseapp.com",
+      projectId: "exoto-invoice"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    let semuaData = [];
+    let editId = null;
+    let halamanSaatIni = 1;
+    const barisPerHalaman = 10;
+
+    async function ambilData() {
+      const snapshot = await db.collection("invoices").orderBy("waktu", "desc").get();
+      semuaData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      renderTable();
+    }
+
+    function formatTanggalIndo(input) {
+      if (!input) return "";
+      const tanggal = new Date(input);
+      if (isNaN(tanggal)) return input;
+      const tgl = tanggal.getDate().toString().padStart(2, '0');
+      const bln = (tanggal.getMonth() + 1).toString().padStart(2, '0');
+      const thn = tanggal.getFullYear();
+      return `${tgl}-${bln}-${thn}`;
+    }
+
+
+
+    function renderTable() {
+      const tbody = document.getElementById("dataBody");
+      const keyword = document.getElementById("searchInput").value.toLowerCase();
+      tbody.innerHTML = "";
+
+      let hasilFilter = semuaData;
+      if (keyword.trim() !== "") {
+        hasilFilter = semuaData.filter(row =>
+          (row.nama || "").toLowerCase().includes(keyword) ||
+          (row.model || "").toLowerCase().includes(keyword) ||
+          (row.km || "").toLowerCase().includes(keyword) ||
+          (row.tanggal || "").toLowerCase().includes(keyword) ||
+          (row.items || []).join(", ").toLowerCase().includes(keyword) ||
+          (row.repairs || []).join(", ").toLowerCase().includes(keyword) ||
+          (row.alamat || "").toLowerCase().includes(keyword)  // kalau sudah tambahkan kolom alamat
+        );
+      }
+
+
+      const totalHalaman = Math.ceil(hasilFilter.length / barisPerHalaman);
+      halamanSaatIni = Math.min(halamanSaatIni, totalHalaman);
+      const awal = (halamanSaatIni - 1) * barisPerHalaman;
+      const dataTampil = hasilFilter.slice(awal, awal + barisPerHalaman);
+
+      dataTampil.forEach(row => {
+        const isEditing = editId === row.id;
+        const tr = document.createElement("tr");
+        tr.innerHTML = isEditing ? `
+          <td><input class="input-kecil" id="edit-nama" value="${row.nama || ''}"></td>
+          <td><input class="input-kecil" id="edit-model" value="${row.model || ''}"></td>
+          <td><input class="input-kecil" id="edit-km" value="${row.km || ''}"></td>
+          <td><input class="input-kecil" id="edit-tanggal" value="${row.tanggal || ''}"></td>
+          <td><input class="input-kecil" id="edit-alamat" value="${row.alamat || ''}"></td>
+          <td><textarea id="edit-items" rows="2" style="width:100%">${(row.items || []).join('\n')}</textarea></td>
+          <td><textarea id="edit-repairs" rows="2" style="width:100%">${(row.repairs || []).join('\n')}</textarea></td>
+          <td><textarea id="edit-notes" rows="2" style="width:100%">${(row.notes || []).join('\n')}</textarea></td>
+          <td><input class="input-kecil" id="edit-total" value="${row.total || ''}"></td>
+          <td>
+            <button class="simpan-btn" onclick="simpanData('${row.id}')">Simpan</button>
+            <button onclick="editId=null; renderTable()">Batal</button>
+          </td>
+        ` : `
+          <td>${row.nama || ""}</td>
+          <td>${row.model || ""}</td>
+          <td>${row.km || ""}</td>
+          <td>${formatTanggalIndo(row.tanggal)}</td>
+          <td>${row.alamat || ""}</td>
+          <td><pre>${(row.items || []).join('\n')}</pre></td>
+          <td><pre>${(row.repairs || []).join('\n')}</pre></td>
+          <td><pre>${(row.notes || []).join('\n')}</pre></td>
+          <td>${row.total || ""}</td>
+          <td>
+            <button class="edit-btn" onclick="editId='${row.id}'; renderTable()">Edit</button>
+            <button class="hapus-btn" onclick="hapusData('${row.id}')">Hapus</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      renderPagination(totalHalaman);
+    }
+
+    function renderPagination(totalHalaman) {
+      const container = document.getElementById("pagination");
+      container.innerHTML = "";
+      for (let i = 1; i <= totalHalaman; i++) {
+        const btn = document.createElement("button");
+        btn.textContent = i;
+        if (i === halamanSaatIni) btn.disabled = true;
+        btn.onclick = () => { halamanSaatIni = i; renderTable(); };
+        container.appendChild(btn);
+      }
+    }
+
+    async function simpanData(id) {
+      const dataBaru = {
+        nama: document.getElementById("edit-nama").value,
+        model: document.getElementById("edit-model").value,
+        km: document.getElementById("edit-km").value,
+        tanggal: document.getElementById("edit-tanggal").value,
+         alamat: document.getElementById("edit-alamat").value,
+        total: document.getElementById("edit-total").value,
+        items: document.getElementById("edit-items").value.split('\n'),
+        repairs: document.getElementById("edit-repairs").value.split('\n'),
+        notes: document.getElementById("edit-notes").value.split('\n')
+      };
+      await db.collection("invoices").doc(id).update(dataBaru);
+      alert("\u2705 Data berhasil diperbarui!");
+      editId = null;
+      ambilData();
+    }
+
+    async function hapusData(id) {
+      if (confirm("Yakin ingin menghapus data ini?")) {
+        await db.collection("invoices").doc(id).delete();
+        alert("\u2705 Data dihapus");
+        ambilData();
+      }
+    }
+
+    ambilData();
+
+    // fungsi untuk export PDF dan EXCEL
+  function getFilteredData() {
+    const keyword = document.getElementById("searchInput").value.toLowerCase();
+    return semuaData.filter(row =>
+      (row.nama || "").toLowerCase().includes(keyword) ||
+      (row.model || "").toLowerCase().includes(keyword) ||
+      (row.km || "").toLowerCase().includes(keyword) ||
+      (row.tanggal || "").toLowerCase().includes(keyword) ||
+      (row.alamat || "").toLowerCase().includes(keyword) ||
+      (row.items || []).join(", ").toLowerCase().includes(keyword) ||
+      (row.repairs || []).join(", ").toLowerCase().includes(keyword)
+    );
+  }
+
+  function exportPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const data = getFilteredData().map((row, i) => [
+        i + 1,
+        row.nama || '',
+        row.model || '',
+        row.km || '',
+        row.tanggal || '',
+        row.alamat || '', // << tambahkan baris ini
+        (row.items || []).join(", "),
+        (row.repairs || []).join(", "),
+        (row.notes || []).join(", "),
+        row.total || ''
+      ]);
+
+    doc.autoTable({
+      head: [['No', 'Nama', 'Model', 'KM', 'Tanggal', 'Alamat', 'Item', 'Jasa', 'Catatan', 'Total']],
+      body: data,
+      styles: { fontSize: 8 }
+    });
+
+    doc.save('data_customer.pdf');
+  }
+
+  function exportExcel() {
+    const data = getFilteredData().map((row, i) => ({
+      No: i + 1,
+      Nama: row.nama || '',
+      Model: row.model || '',
+      KM: row.km || '',
+      Tanggal: row.tanggal || '',
+      Alamat: row.alamat || '', // << tambahkan baris ini
+      Item: (row.items || []).join(", "),
+      Jasa: (row.repairs || []).join(", "),
+      Catatan: (row.notes || []).join(", "),
+      Total: row.total || ''
+    }));
+
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "DataCustomer");
+    XLSX.writeFile(wb, "data_customer.xlsx");
+  }
+
+    function handleSearch() {
+  const keyword = document.getElementById("searchInput").value.trim().toLowerCase();
+  halamanSaatIni = 1; // reset ke halaman awal
+  renderTable(); // tetap renderTable, tidak usah ambilData
+}
+
+  </script>
+</body>
+</html>
