@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+<!-- 1. untuk konek ke firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Invoice ExOto</title>
@@ -122,7 +126,7 @@
 .hapus-btn:hover {
   background-color: #c82333;
 }
-
+.cek-btn { background-color: #dc3545; /* merah */color: white;}
   </style>
 </head>
 <body>
@@ -131,12 +135,16 @@
       <!-- kalau merubah src gambar maka di printArea.innerHTML harus diganti juga -->
       <img src="EX-OTO1.png" alt="Logo ExOto" class="logo">
     </div>
+    <button class="cek-btn" onclick="window.location.href='Tabel_Customer.html'">Check Data Customer</button>
     <h2>APLIKASI INVOICE</h2>
 
     <p><strong>Nama:</strong> <input type="text" id="nama"></p>
     <p><strong>Jenis/Model:</strong> <input type="text" id="model"></p>
     <p><strong>Kilometer:</strong> <input type="text" id="km" oninput="formatKM(this)"></p>
     <p><strong>Tanggal:</strong> <input type="date" id="tanggal"></p>
+    <p><strong>Alamat:</strong>
+      <textarea id="alamat" rows="2" placeholder="Alamat Customer"></textarea>
+    </p>
 
                   <h4>Item Service</h4>
                   <div class="favorit-wrapper">
@@ -193,7 +201,13 @@
     <button onclick="clearTTD()">Hapus TTD</button>
 
     <p class="total">Total: <span id="total">Rp 0</span></p>
-    <button onclick="simpanKeSheet()" style="background-color: #007bff; color: white; padding: 10px; border: none; border-radius: 5px; font-weight: bold;">Simpan ke Database</button>
+    <button id="btnSimpan" onclick="simpanKeFirebase()" disabled
+  style="background-color: #007bff; color: white; padding: 10px; border: none; border-radius: 5px; font-weight: bold;">
+  Simpan ke Database
+</button>
+
+
+
 
     <button onclick="cetakPDF()">Cetak PDF</button>
     
@@ -322,6 +336,7 @@
       const model = document.getElementById('model').value;
       const km = document.getElementById('km').value;
       const tanggal = formatTanggalIndonesia(document.getElementById('tanggal').value);
+      const alamat = document.getElementById('alamat').value;
       const total = document.getElementById('total').textContent;
       const ttdURL = document.getElementById('ttd').toDataURL();
 
@@ -343,6 +358,7 @@ printArea.innerHTML = `
     <p style="margin:0;">Model: ${model}</p>
     <p style="margin:0;">Kilometer: ${km}</p>
     <p style="margin:0;">Tanggal: ${tanggal}</p>
+    <p style="margin:0;">Alamat: ${alamat}</p>
 
     <hr style="margin: 2px 0 1px;">
 
@@ -531,33 +547,66 @@ canvas.addEventListener('touchcancel', () => drawing = false);
 
 window.onload = muatItemFavorit;
 
-//script untuk google script
-async function simpanKeSheet() {
-  const data = {
-    nama: document.getElementById('nama').value,
-    model: document.getElementById('model').value,
-    km: document.getElementById('km').value,
-    tanggal: document.getElementById('tanggal').value,
-    items: items.map(i => `${i.item} x${i.jumlah} @${formatRupiah(i.harga)}`),
-    repairs: repairs.map(r => `${r.repair} (${formatRupiah(r.harga)})`),
-    notes: notes,
-    total: document.getElementById('total').textContent
-  };
+</script>
+<!-- Firebase CDN -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
-  await fetch("https://script.google.com/macros/s/AKfycbybAf09MT4P3VVyUHfzVa5kNY9DHwlbafu_3KWTx2iaK2F0RlDoU_c_MzerxF9BEDNDXg/exec", {
-    method: "POST",
-    body: JSON.stringify(data),
-    headers: {
-      "Content-Type": "application/json"
+<script>
+  // Global db
+  let db;
+
+  // Tunggu DOM + Firebase siap
+  window.addEventListener("DOMContentLoaded", () => {
+    // Konfigurasi Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyDZTV2Ebf9YKOh5tzgiE7jROXdWcdNv8VU",
+      authDomain: "exoto-invoice.firebaseapp.com",
+      projectId: "exoto-invoice",
+      storageBucket: "exoto-invoice.appspot.com",
+      messagingSenderId: "249194639362",
+      appId: "1:249194639362:web:08190a38af2a36d9b0771b"
+    };
+
+    // Inisialisasi Firebase
+    firebase.initializeApp(firebaseConfig);
+
+    // Inisialisasi Firestore
+    db = firebase.firestore();
+
+    // ✅ Aktifkan tombol setelah db siap
+    document.getElementById("btnSimpan").disabled = false;
+  });
+
+  async function simpanKeFirebase() {
+    if (!db) {
+      alert("Database belum siap. Silakan tunggu sebentar...");
+      return;
     }
-  })
-  .then(res => res.text())
-  .then(res => alert("Berhasil simpan: " + res))
-  .catch(err => alert("Gagal simpan: " + err));
-}
+
+    const data = {
+      nama: document.getElementById('nama').value,
+      model: document.getElementById('model').value,
+      km: document.getElementById('km').value,
+      tanggal: document.getElementById('tanggal').value,
+      alamat: document.getElementById('alamat').value,
+      items: items.map(i => `${i.item} x${i.jumlah} @${formatRupiah(i.harga)}`),
+      repairs: repairs.map(r => `${r.repair} (${formatRupiah(r.harga)})`),
+      notes: notes,
+      total: document.getElementById('total').textContent,
+      waktu: new Date()
+    };
+
+    try {
+      await db.collection("invoices").add(data);
+      alert("✅ Data berhasil disimpan ke Firebase!");
+    } catch (err) {
+      alert("❌ Gagal menyimpan: " + err.message);
+    }
+  }
+</script>
 
 
-
-  </script>
 </body>
+
 </html>
