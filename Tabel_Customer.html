@@ -34,7 +34,50 @@
       border-collapse: collapse;
       background: white;
       table-layout: auto;
+      display: block;
+      overflow-x: auto;
     }
+    
+    @media (max-width: 600px) {
+  table thead {
+    display: none;
+  }
+
+  table, table tbody, table tr, table td {
+    display: block;
+    width: 100%;
+  }
+
+  table tr {
+    margin-bottom: 12px;
+    border: 1px solid #ccc;
+    padding: 8px;
+    border-radius: 6px;
+    background: white;
+  }
+
+  table td {
+    text-align: left;
+    padding: 6px;
+    font-size: 13px;
+    position: relative;
+  }
+
+  table td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    display: block;
+    margin-bottom: 3px;
+    color: #555;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+  }
+}
+
+
+
     th, td {
       padding: 6px;
       text-align: left;
@@ -189,20 +232,22 @@
             <button onclick="editId=null; renderTable()">Batal</button>
           </td>
         ` : `
-          <td>${nomor}</td>
-          <td>${row.nama || ""}</td>
-          <td>${row.model || ""}</td>
-          <td>${row.km || ""}</td>
-          <td>${formatTanggalIndo(row.tanggal)}</td>
-          <td>${row.alamat || ""}</td>
-          <td><pre>${(row.items || []).join('\n')}</pre></td>
-          <td><pre>${(row.repairs || []).join('\n')}</pre></td>
-          <td><pre>${(row.notes || []).join('\n')}</pre></td>
-          <td>${row.total || ""}</td>
-          <td>
-            <button class="edit-btn" onclick="editId='${row.id}'; renderTable()">Edit</button>
-            <button class="hapus-btn" onclick="hapusData('${row.id}')">Hapus</button>
-          </td>
+          <tr>
+            <td data-label="No">${nomor}</td>
+            <td data-label="Nama">${row.nama || ""}</td>
+            <td data-label="Model">${row.model || ""}</td>
+            <td data-label="KM">${row.km || ""}</td>
+            <td data-label="Tanggal">${formatTanggalIndo(row.tanggal)}</td>
+            <td data-label="Alamat">${row.alamat || ""}</td>
+            <td data-label="Item"><pre>${(row.items || []).join('\n')}</pre></td>
+            <td data-label="Jasa"><pre>${(row.repairs || []).join('\n')}</pre></td>
+            <td data-label="Catatan"><pre>${(row.notes || []).join('\n')}</pre></td>
+            <td data-label="Total">${row.total || ""}</td>
+            <td data-label="Aksi">
+              <button class="edit-btn" onclick="editId='${row.id}'; renderTable()">Edit</button>
+              <button class="hapus-btn" onclick="hapusData('${row.id}')">Hapus</button>
+            </td>
+          </tr>
         `;
         tbody.appendChild(tr);
       });
