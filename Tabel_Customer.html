@@ -200,11 +200,12 @@
           (row.nama || "").toLowerCase().includes(keyword) ||
           (row.model || "").toLowerCase().includes(keyword) ||
           (row.km || "").toLowerCase().includes(keyword) ||
-          (row.tanggal || "").toLowerCase().includes(keyword) ||
+          formatTanggalIndo(row.tanggal).toLowerCase().includes(keyword) ||
+          (row.alamat || "").toLowerCase().includes(keyword) ||
           (row.items || []).join(", ").toLowerCase().includes(keyword) ||
-          (row.repairs || []).join(", ").toLowerCase().includes(keyword) ||
-          (row.alamat || "").toLowerCase().includes(keyword)
+          (row.repairs || []).join(", ").toLowerCase().includes(keyword)
         );
+
       }
 
       const totalHalaman = Math.ceil(hasilFilter.length / barisPerHalaman);
